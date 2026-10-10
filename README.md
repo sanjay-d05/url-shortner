@@ -1,73 +1,84 @@
-# Snip — URL Shortener
+# Snip: URL Shortener
 
-Full-stack URL shortener with analytics.
+A full-stack URL shortener with link management and analytics.
 
-| Layer | Stack |
+## Stack
+
+| Area | Technology |
 |---|---|
-| API | NestJS 11 (TypeScript), clean architecture, Swagger |
-| Database | PostgreSQL 16 + Prisma |
-| Cache | Redis (redirect cache; app still works if Redis is down) |
-| Auth | JWT access token (memory) + rotating refresh token (httpOnly cookie), bcrypt, API keys |
-| Frontend | Next.js 15 (App Router), Tailwind v4, TanStack Query (server state), Redux Toolkit (browser state) |
-
-## Local development
-
-Requires Node 20+ and PostgreSQL. Redis is optional; the app still works if it is unavailable. Ensure `server/.env` and `client/.env.local` exist (copy the matching `.env.example` files if needed). Set `DATABASE_URL` in `server/.env` to your local PostgreSQL database and `NEXT_PUBLIC_API_URL` in `client/.env.local` to `http://localhost:4000`.
-
-```bash
-# API
-cd server
-cp .env.example .env
-npm install
-npm run prisma:migrate    # creates/applies versioned migrations
-npm run start:dev         # http://localhost:4000
-
-# Web (second terminal)
-cd client
-cp .env.example .env.local
-npm install
-npm run dev               # http://localhost:3000
-```
-
-The first time you use a new database, run `npm run prisma:migrate` from `server/` to apply the committed migrations. Tests: `cd server && npm test` (unit tests + an HTTP end-to-end suite that runs against in-memory repositories, so no database is needed).
+| Frontend | Next.js 15, Tailwind CSS 4, TanStack Query, Redux Toolkit |
+| API | NestJS 11, TypeScript, Swagger |
+| Database | PostgreSQL 16, Prisma |
+| Cache | Redis (optional; the API continues without it) |
+| Authentication | JWT, rotating refresh tokens in an HTTP-only cookie, bcrypt |
 
 ## Features
 
-- Shorten URLs (anonymous or signed in), random 7-char base62 codes, custom aliases
-- 302 redirects served by the API, Redis-cached; click logging is fire-and-forget so it never slows a redirect
-- Expiry by date, click limits (atomic in SQL), password-protected links, enable/disable, edit, delete
-- Tags, search, status filter, pagination, bulk select/delete
-- Bulk shortening (paste URLs or upload CSV/TXT, download results as CSV)
-- QR codes (view / download PNG), UTM builder
-- Analytics per link: clicks, unique visitors, time series, countries, devices, browsers, OS, referrers; bot traffic is excluded
-- Dashboard overview, API keys (`x-api-key` header), rate limiting, Google Safe Browsing check (optional), self-redirect blocking
+- Create short links with random or custom codes, with or without an account
+- Redirect through the API with Redis caching and asynchronous click logging
+- Set expiration dates and click limits; protect, edit, disable, and delete links
+- Organize links with tags; search, filter, paginate, and bulk delete
+- Create links in bulk from pasted URLs or CSV/TXT files, and export results to CSV
+- Generate QR codes and UTM links
+- View click, visitor, location, device, browser, OS, and referrer analytics
+- Manage API keys and use rate limiting and optional Google Safe Browsing checks
 
-## Clean architecture (server)
+## Local development
 
-```
-server/src/modules/<module>/
-  domain/          entities, value objects (ShortCode, OriginalUrl), repository interfaces. No framework imports.
-  application/     use cases (CreateShortLink, ResolveShortLink, RecordClick, ...) depend only on domain.
-  infrastructure/  Prisma repositories, Redis cache, QR generator, Safe Browsing.
-  presentation/    controllers, DTOs, guards.
-```
-Dependencies point inward only. Domain errors (`DomainError`) are mapped to HTTP codes by one exception filter.
+Requirements: Node.js 20+ and PostgreSQL. Redis is optional.
 
-## State ownership (client)
+1. Create `server/.env` from `server/.env.example` and set `DATABASE_URL` to your PostgreSQL database.
+2. Create `client/.env.local` from `client/.env.example` and set `NEXT_PUBLIC_API_URL=http://localhost:4000`.
+3. Start the API:
 
-- **TanStack Query**: everything the server owns (links, analytics, API keys, QR).
-- **Redux Toolkit**: everything the browser owns (auth session/token, table filters, selection, modals).
+   ```bash
+   cd server
+   npm install
+   npm run prisma:migrate
+   npm run start:dev
+   ```
+
+4. In a second terminal, start the frontend:
+
+   ```bash
+   cd client
+   npm install
+   npm run dev
+   ```
+
+The API runs at `http://localhost:4000`; Swagger docs are at `/api/docs`. The frontend runs at `http://localhost:3000`.
+
+For a new database, `npm run prisma:migrate` applies the committed migrations. Run the server test suite with `cd server && npm test`; its end-to-end tests use in-memory repositories.
+
+## Deployment
+
+### API on Render
+
+Create a Render Web Service with the repository's `server` directory as its root:
+
+- Build command: `npm install --include=dev && npm run build`
+- Start command: `npm run start:prod`
+
+On startup, the production script applies committed migrations with `prisma migrate deploy` before starting the API. Set `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `BASE_URL`, and `FRONTEND_URL` in the service environment. Set `REDIS_URL` if using Redis.
+
+### Frontend on Vercel
+
+Create a Vercel project from the same repository with `client` as the root directory. Set `NEXT_PUBLIC_API_URL` to the deployed API URL, such as `https://your-api.onrender.com`.
 
 ## Environment variables
 
-See `server/.env.example` and `client/.env.example`. Change both JWT secrets for any real deployment.
-`BASE_URL` is the public URL of the API (short links are `BASE_URL/<code>`); `FRONTEND_URL` is where the dashboard lives.
+See `server/.env.example` and `client/.env.example`. Use strong, separate JWT secrets in production. `BASE_URL` is the public API URL used to form short links; `FRONTEND_URL` is the deployed dashboard URL.
 
-## Notes and known limits
+## Project structure
 
-- Country analytics come from CDN headers (`cf-ipcountry`, `x-vercel-ip-country`); without one, country shows "Unknown". Plug a GeoIP database into `RecordClick` if you need it self-hosted.
-- Click logging is in-process fire-and-forget. For very high traffic, swap `ClickRepository` for a queue-backed implementation (e.g. BullMQ); the use case doesn't change.
-- Schema changes are tracked under `server/prisma/migrations`; local development uses `prisma migrate dev`.
-- If you already have a database created with the old `prisma db push` flow, back it up and verify its schema matches the current Prisma schema before adopting migrations. Then, from `server/`, mark the baseline as already applied with `npx prisma migrate resolve --applied 20261004150000_init`; do not run the initial migration against tables that already exist.
-- The dashboard is guarded client-side (session restored from the refresh cookie on load) rather than by Next.js middleware, because the API and web app may live on different domains.
-- Custom domains are not implemented.
+The server uses a layered architecture under `server/src/modules/<module>/`:
+
+```text
+domain/          Entities, value objects, and repository interfaces
+application/     Use cases
+infrastructure/  Prisma, Redis, QR generation, and external integrations
+presentation/    Controllers, DTOs, and guards
+```
+
+The frontend uses TanStack Query for server data and Redux Toolkit for client state.
+
