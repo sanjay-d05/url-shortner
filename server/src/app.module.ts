@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { LinksModule } from './modules/links/links.module';
 import { DomainExceptionFilter } from './shared/infrastructure/domain-exception.filter';
 import { SharedModule } from './shared/shared.module';
+import { KeepAliveService } from './keep-alive.service';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { SharedModule } from './shared/shared.module';
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
+    KeepAliveService,
   ],
 })
 export class AppModule {}
