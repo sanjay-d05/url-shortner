@@ -1,3 +1,5 @@
+// Types for the API responses and data structures used in the application
+
 export interface User { id: string; email: string; role: string }
 
 export type LinkStatus = 'active' | 'disabled' | 'expired' | 'limit_reached';
