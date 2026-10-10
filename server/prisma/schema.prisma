@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  passwordHash     String
+  role             String   @default("USER")
+  refreshTokenHash String?
+  createdAt        DateTime @default(now())
+  links            Link[]
+  tags             Tag[]
+  apiKeys          ApiKey[]
+}
+
+model Link {
+  id           Int          @id @default(autoincrement())
+  shortCode    String       @unique
+  originalUrl  String
+  userId       String?
+  user         User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt    DateTime?
+  maxClicks    Int?
+  clickCount   Int          @default(0)
+  passwordHash String?
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  tags         Tag[]
+  clicks       ClickEvent[]
+
+  @@index([userId, createdAt])
+}
+
+model ClickEvent {
+  id          Int      @id @default(autoincrement())
+  linkId      Int
+  link        Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  clickedAt   DateTime @default(now())
+  country     String   @default("Unknown")
+  device      String
+  browser     String
+  os          String
+  referrer    String
+  visitorHash String
+
+  @@index([linkId, clickedAt])
+}
+
+model Tag {
+  id     Int    @id @default(autoincrement())
+  name   String
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  links  Link[]
+
+  @@unique([userId, name])
+}
+
+model ApiKey {
+  id        String   @id @default(uuid())
+  name      String
+  prefix    String
+  keyHash   String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
