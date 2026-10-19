@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { BarChart3, Copy, ExternalLink, LockKeyhole, Pencil, Power, PowerOff, QrCode, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Card, Input, Spinner, StatusBadge, copyToClipboard, formatDate } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
@@ -89,7 +90,7 @@ export default function LinksTable() {
             <Button className="mt-5" onClick={() => dispatch(openCreate())}>New link</Button>
           </div>
         ) : (
-          <table className="w-full text-left text-sm">
+          <table className="w-full min-w-[840px] text-left text-sm">
             <thead className="border-b border-line text-muted">
               <tr>
                 <th className="w-10 p-3">
@@ -100,7 +101,7 @@ export default function LinksTable() {
                 <th className="p-3 text-right font-medium">Clicks</th>
                 <th className="p-3 font-medium">Status</th>
                 <th className="p-3 font-medium">Created</th>
-                <th className="p-3" />
+                <th className="w-[188px] p-3 text-right font-medium"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -110,11 +111,30 @@ export default function LinksTable() {
                     <input type="checkbox" aria-label={`Select ${l.shortCode}`} checked={selectedIds.includes(l.id)} onChange={() => dispatch(toggleSelected(l.id))} />
                   </td>
                   <td className="p-3">
-                    <button onClick={() => copyToClipboard(l.shortUrl)} title="Copy" className="cursor-pointer font-mono hover:text-accent">
-                      {l.shortUrl.replace(/^https?:\/\//, '')}
-                    </button>
+                    <div className="flex max-w-64 items-center gap-1">
+                      <a
+                        href={l.shortUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={l.shortUrl}
+                        className="group flex min-w-0 items-center gap-1.5 rounded-md border border-line bg-paper/70 px-2.5 py-1.5 font-mono text-xs font-medium text-ink transition-colors hover:border-accent hover:text-accent"
+                      >
+                        <span className="truncate">{l.shortUrl.replace(/^https?:\/\//, '')}</span>
+                        <ExternalLink size={13} className="shrink-0 opacity-60 group-hover:opacity-100" aria-hidden="true" />
+                      </a>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0 p-0"
+                        onClick={() => copyToClipboard(l.shortUrl)}
+                        title="Copy short link"
+                        aria-label={`Copy short link ${l.shortCode}`}
+                      >
+                        <Copy size={15} aria-hidden="true" />
+                      </Button>
+                    </div>
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {l.isPasswordProtected && <span className="rounded border border-line px-1.5 text-xs text-muted">🔒 password</span>}
+                      {l.isPasswordProtected && <span className="inline-flex items-center gap-1 rounded border border-line px-1.5 text-xs text-muted"><LockKeyhole size={11} aria-hidden="true" /> password</span>}
                       {l.tags.map((t) => <span key={t} className="rounded border border-line px-1.5 text-xs text-muted">{t}</span>)}
                     </div>
                   </td>
@@ -124,12 +144,29 @@ export default function LinksTable() {
                   </td>
                   <td className="p-3"><StatusBadge status={l.status} /></td>
                   <td className="whitespace-nowrap p-3 text-muted">{formatDate(l.createdAt)}</td>
-                  <td className="whitespace-nowrap p-3 text-right">
-                    <Link href={`/links/${l.id}`}><Button size="sm" variant="ghost">Stats</Button></Link>
-                    <Button size="sm" variant="ghost" onClick={() => dispatch(setQrFor(l))}>QR</Button>
-                    <Button size="sm" variant="ghost" onClick={() => dispatch(openEdit(l))}>Edit</Button>
-                    <Button size="sm" variant="ghost" onClick={() => toggleActive(l)}>{l.isActive ? 'Disable' : 'Enable'}</Button>
-                    <Button size="sm" variant="ghost" className="hover:text-accent" onClick={() => remove([l.id])}>Delete</Button>
+                  <td className="whitespace-nowrap p-2 text-right">
+                    <div className="flex items-center justify-end gap-0.5">
+                      <Link
+                        href={`/links/${l.id}`}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-line/50 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ink"
+                        title="View stats"
+                        aria-label={`View stats for ${l.shortCode}`}
+                      >
+                        <BarChart3 size={16} aria-hidden="true" />
+                      </Link>
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => dispatch(setQrFor(l))} title="Show QR code" aria-label={`Show QR code for ${l.shortCode}`}>
+                        <QrCode size={16} aria-hidden="true" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => dispatch(openEdit(l))} title="Edit link" aria-label={`Edit ${l.shortCode}`}>
+                        <Pencil size={16} aria-hidden="true" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => toggleActive(l)} title={l.isActive ? 'Disable link' : 'Enable link'} aria-label={`${l.isActive ? 'Disable' : 'Enable'} ${l.shortCode}`}>
+                        {l.isActive ? <Power size={16} aria-hidden="true" /> : <PowerOff size={16} aria-hidden="true" />}
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0 hover:text-accent" onClick={() => remove([l.id])} title="Delete link" aria-label={`Delete ${l.shortCode}`}>
+                        <Trash2 size={16} aria-hidden="true" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
