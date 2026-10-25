@@ -1,3 +1,5 @@
+// Types
+
 export interface User { id: string; email: string; role: string }
 
 export type LinkStatus = 'active' | 'disabled' | 'expired' | 'limit_reached';
